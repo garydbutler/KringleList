@@ -1,0 +1,1631 @@
+openapi: 3.1.0
+info:
+  title: KringleList Gift Finder API
+  version: 1.0.0
+  description: |
+    REST API for KringleList Gift Finder MVP - a SaaS platform helping parents discover,
+    organize, and share Christmas and birthday gifts for their children.
+
+    **Authentication**: All endpoints (except public shared bags) require Clerk authentication.
+    Include the Clerk session token in the Authorization header.
+
+    **Rate Limiting**:
+    - Authenticated endpoints: 100 requests/minute per user
+    - Public endpoints: 20 requests/minute per IP
+    - Search endpoints: 30 requests/minute per user
+
+    **COPPA Compliance**: Child profiles store only nickname and age band (no PII).
+
+    **Affiliate Disclosure**: All product links include affiliate tracking for FTC compliance.
+
+servers:
+  - url: https://api.kringlelist.com/v1
+    description: Production
+  - url: http://localhost:3000/api
+    description: Local development
+
+security:
+  - ClerkAuth: []
+
+tags:
+  - name: Children
+    description: Child profile management
+  - name: Bags
+    description: Gift bag management
+  - name: Bag Items
+    description: Individual gift item operations
+  - name: Finder
+    description: Gift discovery and search
+  - name: Trends
+    description: Trending gift recommendations
+  - name: Alerts
+    description: Price and stock alert management
+  - name: Campaigns
+    description: Sponsored campaign management
+  - name: Shared
+    description: Public shared bag access
+  - name: Webhooks
+    description: External webhook endpoints
+
+paths:
+  /children:
+    get:
+      summary: List all child profiles
+      description: Retrieve all child profiles for the authenticated user
+      operationId: listChildren
+      tags: [Children]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of child profiles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  children:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Child'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+    post:
+      summary: Create a child profile
+      description: Create a new child profile with nickname, age band, and interests
+      operationId: createChild
+      tags: [Children]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChildRequest'
+      responses:
+        '201':
+          description: Child profile created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Child'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /children/{childId}:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get child profile
+      description: Retrieve a specific child profile by ID
+      operationId: getChild
+      tags: [Children]
+      responses:
+        '200':
+          description: Child profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Child'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: Update child profile
+      description: Update child profile fields (partial update)
+      operationId: updateChild
+      tags: [Children]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateChildRequest'
+      responses:
+        '200':
+          description: Child profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Child'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete child profile
+      description: Permanently delete a child profile and associated bag
+      operationId: deleteChild
+      tags: [Children]
+      responses:
+        '204':
+          description: Child profile deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bags/{childId}:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get child's gift bag
+      description: Retrieve the gift bag for a specific child with all items
+      operationId: getBag
+      tags: [Bags]
+      responses:
+        '200':
+          description: Gift bag with items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bag'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bags/{bagId}/items:
+    parameters:
+      - name: bagId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      summary: Add item to bag
+      description: Add a product to the child's gift bag
+      operationId: addBagItem
+      tags: [Bag Items]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddBagItemRequest'
+      responses:
+        '201':
+          description: Item added to bag successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BagItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bags/{bagId}/share:
+    parameters:
+      - name: bagId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      summary: Generate share link
+      description: Create or regenerate a shareable link for the bag
+      operationId: shareBag
+      tags: [Bags]
+      responses:
+        '200':
+          description: Share link generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  shareUrl:
+                    type: string
+                    format: uri
+                    example: https://kringlelist.com/shared/bag/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                  shareToken:
+                    type: string
+                    format: uuid
+                  expiresAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bag-items/{itemId}:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    patch:
+      summary: Update bag item
+      description: Update item notes, priority, or other fields
+      operationId: updateBagItem
+      tags: [Bag Items]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBagItemRequest'
+      responses:
+        '200':
+          description: Bag item updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BagItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Remove bag item
+      description: Remove an item from the bag
+      operationId: deleteBagItem
+      tags: [Bag Items]
+      responses:
+        '204':
+          description: Bag item removed successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bag-items/{itemId}/alerts:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      summary: Enable price/stock alerts
+      description: Enable price drop or back-in-stock alerts for a bag item
+      operationId: enableAlerts
+      tags: [Bag Items]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                priceThreshold:
+                  type: integer
+                  description: Alert when price drops below this amount (in cents)
+                  minimum: 0
+                stockAlert:
+                  type: boolean
+                  description: Alert when out-of-stock item becomes available
+              required:
+                - priceThreshold
+                - stockAlert
+      responses:
+        '200':
+          description: Alerts enabled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BagItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bag-items/{itemId}/claim:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      summary: Claim a bag item
+      description: Claim an item from a shared bag (for relatives)
+      operationId: claimBagItem
+      tags: [Bag Items]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                claimerName:
+                  type: string
+                  minLength: 2
+                  maxLength: 50
+                claimerEmail:
+                  type: string
+                  format: email
+              required:
+                - claimerName
+                - claimerEmail
+      responses:
+        '200':
+          description: Item claimed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Claim'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Item already claimed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /finder/search:
+    post:
+      summary: Search for gifts
+      description: Search for gift recommendations based on filters and child profile
+      operationId: searchGifts
+      tags: [Finder]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: Search results with products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /trends:
+    get:
+      summary: Get trending gifts
+      description: Retrieve trending gifts by age band and time window
+      operationId: getTrends
+      tags: [Trends]
+      parameters:
+        - name: ageBand
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/AgeBand'
+        - name: window
+          in: query
+          schema:
+            type: string
+            enum: [DAILY, WEEKLY, MONTHLY]
+            default: WEEKLY
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Trending products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trends:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TrendingProduct'
+                  ageBand:
+                    $ref: '#/components/schemas/AgeBand'
+                  window:
+                    type: string
+                  generatedAt:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /alerts/history:
+    get:
+      summary: Get alert history
+      description: Retrieve triggered alerts for the authenticated user
+      operationId: getAlertHistory
+      tags: [Alerts]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Alert history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AlertEvent'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /alerts/settings:
+    get:
+      summary: Get alert settings
+      description: Retrieve alert notification preferences
+      operationId: getAlertSettings
+      tags: [Alerts]
+      responses:
+        '200':
+          description: Alert settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertSettings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    patch:
+      summary: Update alert settings
+      description: Update alert notification preferences
+      operationId: updateAlertSettings
+      tags: [Alerts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAlertSettingsRequest'
+      responses:
+        '200':
+          description: Settings updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertSettings'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /campaigns:
+    get:
+      summary: List sponsored campaigns
+      description: Retrieve active campaigns (admin/sponsor only)
+      operationId: listCampaigns
+      tags: [Campaigns]
+      security:
+        - ClerkAuth: [admin, sponsor]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, ACTIVE, PAUSED, COMPLETED]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of campaigns
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  campaigns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Campaign'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      summary: Create sponsored campaign
+      description: Create a new sponsored campaign (sponsor only)
+      operationId: createCampaign
+      tags: [Campaigns]
+      security:
+        - ClerkAuth: [sponsor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCampaignRequest'
+      responses:
+        '201':
+          description: Campaign created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /campaigns/{campaignId}:
+    parameters:
+      - name: campaignId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get campaign details
+      description: Retrieve campaign details and performance metrics
+      operationId: getCampaign
+      tags: [Campaigns]
+      security:
+        - ClerkAuth: [admin, sponsor]
+      responses:
+        '200':
+          description: Campaign details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: Update campaign
+      description: Update campaign details or status
+      operationId: updateCampaign
+      tags: [Campaigns]
+      security:
+        - ClerkAuth: [sponsor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCampaignRequest'
+      responses:
+        '200':
+          description: Campaign updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /campaigns/{campaignId}/report:
+    parameters:
+      - name: campaignId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get campaign report
+      description: Retrieve campaign performance report with impressions, clicks, conversions
+      operationId: getCampaignReport
+      tags: [Campaigns]
+      security:
+        - ClerkAuth: [admin, sponsor]
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Campaign performance report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /shared/bags/{token}:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: View shared bag (public)
+      description: View a shared gift bag without authentication
+      operationId: viewSharedBag
+      tags: [Shared]
+      security: []
+      responses:
+        '200':
+          description: Shared bag view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedBag'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          description: Share link expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /webhooks/clerk:
+    post:
+      summary: Clerk webhook handler
+      description: Handle Clerk authentication events (user.created, user.deleted, session.created)
+      operationId: clerkWebhook
+      tags: [Webhooks]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Clerk webhook event payload
+      responses:
+        '200':
+          description: Webhook processed successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /webhooks/stripe:
+    post:
+      summary: Stripe webhook handler
+      description: Handle Stripe payment events for sponsored campaigns
+      operationId: stripeWebhook
+      tags: [Webhooks]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Stripe webhook event payload
+      responses:
+        '200':
+          description: Webhook processed successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /health:
+    get:
+      summary: Health check
+      description: Check API health and dependencies
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded]
+                  timestamp:
+                    type: string
+                    format: date-time
+                  services:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        enum: [up, down]
+                      redis:
+                        type: string
+                        enum: [up, down]
+                      search:
+                        type: string
+                        enum: [up, down]
+
+components:
+  securitySchemes:
+    ClerkAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Clerk session token
+
+  schemas:
+    AgeBand:
+      type: string
+      enum:
+        - INFANT     # 0-2 years
+        - TODDLER    # 3-4 years
+        - EARLY      # 5-7 years
+        - MIDDLE     # 8-10 years
+        - TWEEN      # 11-13 years
+        - TEEN       # 14+ years
+
+    Child:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+          minLength: 2
+          maxLength: 20
+        ageBand:
+          $ref: '#/components/schemas/AgeBand'
+        interests:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 8
+        values:
+          type: array
+          items:
+            type: string
+          maxItems: 8
+        budgetCents:
+          type: integer
+          minimum: 0
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - nickname
+        - ageBand
+        - interests
+        - createdAt
+        - updatedAt
+
+    CreateChildRequest:
+      type: object
+      properties:
+        nickname:
+          type: string
+          minLength: 2
+          maxLength: 20
+        ageBand:
+          $ref: '#/components/schemas/AgeBand'
+        interests:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 8
+        values:
+          type: array
+          items:
+            type: string
+          maxItems: 8
+        budgetCents:
+          type: integer
+          minimum: 0
+          nullable: true
+      required:
+        - nickname
+        - ageBand
+        - interests
+
+    UpdateChildRequest:
+      type: object
+      properties:
+        nickname:
+          type: string
+          minLength: 2
+          maxLength: 20
+        ageBand:
+          $ref: '#/components/schemas/AgeBand'
+        interests:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 8
+        values:
+          type: array
+          items:
+            type: string
+          maxItems: 8
+        budgetCents:
+          type: integer
+          minimum: 0
+          nullable: true
+
+    Bag:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        childId:
+          type: string
+          format: uuid
+        shareToken:
+          type: string
+          format: uuid
+        totalBudgetCents:
+          type: integer
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BagItem'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - childId
+        - shareToken
+        - items
+        - createdAt
+        - updatedAt
+
+    BagItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bagId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        priceAtAddCents:
+          type: integer
+        notes:
+          type: string
+          maxLength: 500
+          nullable: true
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 5
+          default: 3
+        priceAlertThreshold:
+          type: integer
+          nullable: true
+        stockAlert:
+          type: boolean
+          default: false
+        claim:
+          $ref: '#/components/schemas/Claim'
+          nullable: true
+        product:
+          $ref: '#/components/schemas/Product'
+        addedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - bagId
+        - productId
+        - priceAtAddCents
+        - priority
+        - stockAlert
+        - product
+        - addedAt
+
+    AddBagItemRequest:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        notes:
+          type: string
+          maxLength: 500
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 5
+          default: 3
+      required:
+        - productId
+
+    UpdateBagItemRequest:
+      type: object
+      properties:
+        notes:
+          type: string
+          maxLength: 500
+          nullable: true
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 5
+
+    Claim:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bagItemId:
+          type: string
+          format: uuid
+        claimerName:
+          type: string
+        claimerEmail:
+          type: string
+          format: email
+        status:
+          type: string
+          enum: [CLAIMED, PURCHASED, CANCELLED]
+        claimedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - bagItemId
+        - claimerName
+        - claimerEmail
+        - status
+        - claimedAt
+        - updatedAt
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        merchantId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+        ageBands:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgeBand'
+        interests:
+          type: array
+          items:
+            type: string
+        currentOffer:
+          $ref: '#/components/schemas/ProductOffer'
+        affiliateLabel:
+          type: string
+          description: FTC-compliant affiliate disclosure
+          example: "Sponsored"
+      required:
+        - id
+        - merchantId
+        - name
+        - imageUrl
+        - ageBands
+        - interests
+        - currentOffer
+        - affiliateLabel
+
+    ProductOffer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        merchantId:
+          type: string
+          format: uuid
+        priceCents:
+          type: integer
+        currency:
+          type: string
+          default: USD
+        inStock:
+          type: boolean
+        clickUrl:
+          type: string
+          format: uri
+          description: First-party click router URL for attribution
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - productId
+        - merchantId
+        - priceCents
+        - currency
+        - inStock
+        - clickUrl
+        - updatedAt
+
+    SearchRequest:
+      type: object
+      properties:
+        childId:
+          type: string
+          format: uuid
+          description: Child ID for personalized results
+        query:
+          type: string
+          minLength: 2
+          maxLength: 100
+        ageBand:
+          $ref: '#/components/schemas/AgeBand'
+        interests:
+          type: array
+          items:
+            type: string
+          maxItems: 8
+        priceMin:
+          type: integer
+          minimum: 0
+        priceMax:
+          type: integer
+          minimum: 0
+        inStockOnly:
+          type: boolean
+          default: false
+        sort:
+          type: string
+          enum: [relevance, price_asc, price_desc, popularity, newest]
+          default: relevance
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        offset:
+          type: integer
+          minimum: 0
+          default: 0
+      required:
+        - ageBand
+
+    SearchResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        searchTime:
+          type: number
+          description: Search execution time in milliseconds
+        sponsored:
+          type: array
+          items:
+            $ref: '#/components/schemas/SponsoredProduct'
+          description: Sponsored products (labeled separately)
+      required:
+        - products
+        - total
+        - searchTime
+
+    SponsoredProduct:
+      allOf:
+        - $ref: '#/components/schemas/Product'
+        - type: object
+          properties:
+            campaignId:
+              type: string
+              format: uuid
+            sponsorLabel:
+              type: string
+              example: "Sponsored by LEGO"
+          required:
+            - campaignId
+            - sponsorLabel
+
+    TrendingProduct:
+      allOf:
+        - $ref: '#/components/schemas/Product'
+        - type: object
+          properties:
+            trendScore:
+              type: number
+              format: float
+              description: Trending score (0-100)
+            trendChange:
+              type: number
+              format: float
+              description: Change from previous period (percentage)
+            rank:
+              type: integer
+              minimum: 1
+          required:
+            - trendScore
+            - rank
+
+    AlertEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bagItemId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [PRICE_DROP, BACK_IN_STOCK]
+        message:
+          type: string
+        triggeredAt:
+          type: string
+          format: date-time
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - bagItemId
+        - type
+        - message
+        - triggeredAt
+
+    AlertSettings:
+      type: object
+      properties:
+        emailEnabled:
+          type: boolean
+          default: true
+        pushEnabled:
+          type: boolean
+          default: false
+        frequency:
+          type: string
+          enum: [IMMEDIATE, DAILY_DIGEST, WEEKLY_DIGEST]
+          default: IMMEDIATE
+      required:
+        - emailEnabled
+        - pushEnabled
+        - frequency
+
+    UpdateAlertSettingsRequest:
+      type: object
+      properties:
+        emailEnabled:
+          type: boolean
+        pushEnabled:
+          type: boolean
+        frequency:
+          type: string
+          enum: [IMMEDIATE, DAILY_DIGEST, WEEKLY_DIGEST]
+
+    Campaign:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sponsorId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, ACTIVE, PAUSED, COMPLETED]
+        pricingModel:
+          type: string
+          enum: [CPM, CPC, FIXED]
+        budgetCents:
+          type: integer
+        spentCents:
+          type: integer
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        targeting:
+          type: object
+          properties:
+            ageBands:
+              type: array
+              items:
+                $ref: '#/components/schemas/AgeBand'
+            interests:
+              type: array
+              items:
+                type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - sponsorId
+        - name
+        - status
+        - pricingModel
+        - budgetCents
+        - spentCents
+        - startDate
+        - endDate
+        - createdAt
+
+    CreateCampaignRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        pricingModel:
+          type: string
+          enum: [CPM, CPC, FIXED]
+        budgetCents:
+          type: integer
+          minimum: 10000
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        targeting:
+          type: object
+          properties:
+            ageBands:
+              type: array
+              items:
+                $ref: '#/components/schemas/AgeBand'
+            interests:
+              type: array
+              items:
+                type: string
+      required:
+        - name
+        - pricingModel
+        - budgetCents
+        - startDate
+        - endDate
+
+    UpdateCampaignRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        status:
+          type: string
+          enum: [DRAFT, ACTIVE, PAUSED, COMPLETED]
+        budgetCents:
+          type: integer
+          minimum: 10000
+        endDate:
+          type: string
+          format: date-time
+        targeting:
+          type: object
+          properties:
+            ageBands:
+              type: array
+              items:
+                $ref: '#/components/schemas/AgeBand'
+            interests:
+              type: array
+              items:
+                type: string
+
+    CampaignReport:
+      type: object
+      properties:
+        campaignId:
+          type: string
+          format: uuid
+        impressions:
+          type: integer
+        clicks:
+          type: integer
+        conversions:
+          type: integer
+        spentCents:
+          type: integer
+        ctr:
+          type: number
+          format: float
+          description: Click-through rate (percentage)
+        cpc:
+          type: number
+          format: float
+          description: Cost per click (in cents)
+        conversionRate:
+          type: number
+          format: float
+          description: Conversion rate (percentage)
+        dailyStats:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              impressions:
+                type: integer
+              clicks:
+                type: integer
+              conversions:
+                type: integer
+              spentCents:
+                type: integer
+      required:
+        - campaignId
+        - impressions
+        - clicks
+        - conversions
+        - spentCents
+        - ctr
+        - dailyStats
+
+    SharedBag:
+      type: object
+      properties:
+        childNickname:
+          type: string
+        ageBand:
+          $ref: '#/components/schemas/AgeBand'
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              product:
+                $ref: '#/components/schemas/Product'
+              notes:
+                type: string
+                nullable: true
+              priority:
+                type: integer
+              claim:
+                $ref: '#/components/schemas/Claim'
+                nullable: true
+      required:
+        - childNickname
+        - ageBand
+        - items
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+      required:
+        - error
+        - message
+
+  responses:
+    BadRequest:
+      description: Bad request - validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: VALIDATION_ERROR
+            message: Invalid request parameters
+            details:
+              nickname: Nickname must be between 2 and 20 characters
+
+    Unauthorized:
+      description: Unauthorized - missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: UNAUTHORIZED
+            message: Authentication required
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: FORBIDDEN
+            message: You do not have permission to access this resource
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: NOT_FOUND
+            message: The requested resource was not found
+
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: RATE_LIMITED
+            message: Too many requests. Please try again later.
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per window
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests in current window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when limit resets
