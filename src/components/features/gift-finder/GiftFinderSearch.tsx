@@ -101,10 +101,10 @@ export function GiftFinderSearch({
               value={
                 priceRange.min !== undefined
                   ? `${priceRange.min}-${priceRange.max}`
-                  : ""
+                  : "any"
               }
               onValueChange={(value) => {
-                if (!value) {
+                if (value === "any") {
                   setPriceRange({});
                   return;
                 }
@@ -123,7 +123,7 @@ export function GiftFinderSearch({
                 <SelectValue placeholder="Any price" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any price</SelectItem>
+                <SelectItem value="any">Any price</SelectItem>
                 {PRICE_BANDS.map((band) => (
                   <SelectItem key={band.label} value={`${band.min}-${band.max}`}>
                     {band.label}
