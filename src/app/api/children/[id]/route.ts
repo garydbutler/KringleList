@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import {
   getChildById,
   updateChild,
   deleteChild,
 } from "@/lib/db/children";
-import { getUserByClerkId } from "@/lib/db/users";
+import { getOrCreateUser } from "@/lib/db/users";
 import { AgeBand } from "@prisma/client";
 
 /**
@@ -23,11 +23,18 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await getUserByClerkId(clerkId);
+    // Get current user from Clerk to ensure we have their email
+    const clerkUser = await currentUser();
 
-    if (!user) {
+    if (!clerkUser || !clerkUser.emailAddresses?.[0]?.emailAddress) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    // Get or create user in database
+    const user = await getOrCreateUser(
+      clerkId,
+      clerkUser.emailAddresses[0].emailAddress
+    );
 
     const { id } = await params;
     const child = await getChildById(id, user.id);
@@ -61,11 +68,18 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await getUserByClerkId(clerkId);
+    // Get current user from Clerk to ensure we have their email
+    const clerkUser = await currentUser();
 
-    if (!user) {
+    if (!clerkUser || !clerkUser.emailAddresses?.[0]?.emailAddress) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    // Get or create user in database
+    const user = await getOrCreateUser(
+      clerkId,
+      clerkUser.emailAddresses[0].emailAddress
+    );
 
     const { id } = await params;
     const body = await request.json();
@@ -121,11 +135,18 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await getUserByClerkId(clerkId);
+    // Get current user from Clerk to ensure we have their email
+    const clerkUser = await currentUser();
 
-    if (!user) {
+    if (!clerkUser || !clerkUser.emailAddresses?.[0]?.emailAddress) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    // Get or create user in database
+    const user = await getOrCreateUser(
+      clerkId,
+      clerkUser.emailAddresses[0].emailAddress
+    );
 
     const { id } = await params;
     const child = await deleteChild(id, user.id);

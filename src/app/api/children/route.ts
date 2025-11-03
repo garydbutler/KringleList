@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { getChildren, createChild } from "@/lib/db/children";
-import { getUserByClerkId } from "@/lib/db/users";
+import { getOrCreateUser } from "@/lib/db/users";
 import { AgeBand } from "@prisma/client";
 
 /**
@@ -16,12 +16,18 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user from database
-    const user = await getUserByClerkId(clerkId);
+    // Get current user from Clerk to ensure we have their email
+    const clerkUser = await currentUser();
 
-    if (!user) {
+    if (!clerkUser || !clerkUser.emailAddresses?.[0]?.emailAddress) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    // Get or create user in database
+    const user = await getOrCreateUser(
+      clerkId,
+      clerkUser.emailAddresses[0].emailAddress
+    );
 
     const children = await getChildren(user.id);
 
@@ -47,12 +53,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user from database
-    const user = await getUserByClerkId(clerkId);
+    // Get current user from Clerk to ensure we have their email
+    const clerkUser = await currentUser();
 
-    if (!user) {
+    if (!clerkUser || !clerkUser.emailAddresses?.[0]?.emailAddress) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    // Get or create user in database
+    const user = await getOrCreateUser(
+      clerkId,
+      clerkUser.emailAddresses[0].emailAddress
+    );
 
     const body = await request.json();
     const { nickname, ageBand, interests, values, budgetCents } = body;
