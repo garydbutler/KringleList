@@ -3,8 +3,22 @@
 import { Child } from "@prisma/client";
 import { ChildProfileCard } from "./ChildProfileCard";
 
+type ChildWithBag = Child & {
+  bag?: {
+    id: string;
+    shareToken: string;
+    items: Array<{
+      id: string;
+      quantity: number;
+      productOffer: {
+        priceCents: number;
+      };
+    }>;
+  } | null;
+};
+
 type ChildProfileListProps = {
-  children: Child[];
+  children: ChildWithBag[];
   onDelete?: (id: string) => void;
 };
 

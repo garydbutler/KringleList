@@ -1,13 +1,27 @@
 "use client";
 
-import { Child } from "@prisma/client";
+import { Child, Bag, BagItem, ProductOffer } from "@prisma/client";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+type ChildWithBag = Child & {
+  bag?: {
+    id: string;
+    shareToken: string;
+    items: Array<{
+      id: string;
+      quantity: number;
+      productOffer: {
+        priceCents: number;
+      };
+    }>;
+  } | null;
+};
+
 type ChildProfileCardProps = {
-  child: Child;
+  child: ChildWithBag;
   onDelete?: (id: string) => void;
 };
 
@@ -15,6 +29,24 @@ export function ChildProfileCard({ child, onDelete }: ChildProfileCardProps) {
   const budgetDisplay = child.budgetCents
     ? `$${(child.budgetCents / 100).toFixed(2)}`
     : "No budget set";
+
+  // Calculate total spend from bag items
+  const totalSpendCents = child.bag?.items?.reduce((total, item) => {
+    return total + item.productOffer.priceCents * item.quantity;
+  }, 0) || 0;
+
+  const totalSpend = totalSpendCents / 100;
+
+  // Calculate budget status
+  let budgetStatus: "green" | "yellow" | "red" | null = null;
+  let percentUsed = 0;
+
+  if (child.budgetCents && totalSpendCents > 0) {
+    percentUsed = (totalSpendCents / child.budgetCents) * 100;
+    if (percentUsed >= 95) budgetStatus = "red";
+    else if (percentUsed >= 75) budgetStatus = "yellow";
+    else budgetStatus = "green";
+  }
 
   return (
     <Card>
@@ -25,9 +57,35 @@ export function ChildProfileCard({ child, onDelete }: ChildProfileCardProps) {
             <CardDescription>Age: {child.ageBand}</CardDescription>
           </div>
           {child.budgetCents && (
-            <Badge variant="outline">{budgetDisplay}</Badge>
+            <div className="text-right">
+              <Badge variant="outline">{budgetDisplay}</Badge>
+              {totalSpendCents > 0 && budgetStatus && (
+                <div className="mt-1 text-xs text-gray-600">
+                  ${totalSpend.toFixed(2)} spent
+                </div>
+              )}
+            </div>
           )}
         </div>
+        {/* Mini budget progress bar */}
+        {child.budgetCents && totalSpendCents > 0 && budgetStatus && (
+          <div className="mt-3">
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div
+                className={`h-full transition-all rounded-full ${
+                  budgetStatus === "green"
+                    ? "bg-green-500"
+                    : budgetStatus === "yellow"
+                    ? "bg-yellow-500"
+                    : "bg-red-500"
+                }`}
+                style={{
+                  width: `${Math.min(percentUsed, 100)}%`,
+                }}
+              />
+            </div>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Interests */}

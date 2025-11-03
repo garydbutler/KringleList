@@ -47,6 +47,17 @@ export async function getChildren(userId: string) {
         select: {
           id: true,
           shareToken: true,
+          items: {
+            select: {
+              id: true,
+              quantity: true,
+              productOffer: {
+                select: {
+                  priceCents: true,
+                },
+              },
+            },
+          },
         },
       },
     },
