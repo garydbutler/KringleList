@@ -37,10 +37,18 @@ export async function createChild(data: CreateChildData): Promise<Child> {
 /**
  * Get all children for a user
  */
-export async function getChildren(userId: string): Promise<Child[]> {
+export async function getChildren(userId: string) {
   return prisma.child.findMany({
     where: {
       userId,
+    },
+    include: {
+      bag: {
+        select: {
+          id: true,
+          shareToken: true,
+        },
+      },
     },
     orderBy: {
       createdAt: "desc",

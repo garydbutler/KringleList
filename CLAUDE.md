@@ -28,3 +28,4 @@ TypeScript 5.x with Next.js 14+ (App Router), React 18+, Node.js 20+: Follow sta
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
+- I am not using ngrok, I am running on vercel production environment.

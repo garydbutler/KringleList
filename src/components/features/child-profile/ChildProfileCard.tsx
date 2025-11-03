@@ -60,9 +60,12 @@ export function ChildProfileCard({ child, onDelete }: ChildProfileCardProps) {
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 pt-2">
-          <Button asChild variant="default" size="sm" className="flex-1">
+        <div className="grid grid-cols-2 gap-2 pt-2">
+          <Button asChild variant="default" size="sm">
             <Link href={`/finder?childId=${child.id}`}>Find Gifts</Link>
+          </Button>
+          <Button asChild variant="default" size="sm">
+            <Link href={`/bags/${child.id}`}>View Bag</Link>
           </Button>
           <Button asChild variant="outline" size="sm">
             <Link href={`/children/${child.id}/edit`}>Edit</Link>

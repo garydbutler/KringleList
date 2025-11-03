@@ -47,11 +47,41 @@ export async function getOrCreateUser(
   clerkId: string,
   email: string
 ): Promise<User> {
-  const existingUser = await getUserByClerkId(clerkId);
+  // First try to find by clerkId
+  const existingUser = await prisma.user.findUnique({
+    where: { clerkId },
+  });
 
   if (existingUser) {
+    // Update email if changed
+    if (existingUser.email !== email) {
+      return prisma.user.update({
+        where: { clerkId },
+        data: { email },
+      });
+    }
     return existingUser;
   }
 
-  return createUser({ clerkId, email });
+  // User doesn't exist, try to create
+  try {
+    return await prisma.user.create({
+      data: {
+        clerkId,
+        email,
+      },
+    });
+  } catch (error: any) {
+    // If creation fails due to unique constraint, try to find by clerkId again
+    // (handles race condition)
+    if (error.code === 'P2002') {
+      const user = await prisma.user.findUnique({
+        where: { clerkId },
+      });
+      if (user) {
+        return user;
+      }
+    }
+    throw error;
+  }
 }

@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AgeBand } from "@prisma/client";
 import { useChild } from "@/lib/hooks/useChildren";
 import { GiftFinderSearch } from "@/components/features/gift-finder/GiftFinderSearch";
-import { toast } from "sonner";
+import { ChildSelectorDialog } from "@/components/features/bag/ChildSelectorDialog";
 
 function FinderContent() {
   const searchParams = useSearchParams();
@@ -13,10 +13,12 @@ function FinderContent() {
 
   const { data: childData } = useChild(childId || "");
 
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedProductOfferId, setSelectedProductOfferId] = useState("");
+
   const handleAddToBag = (productOfferId: string) => {
-    // TODO: Implement add to bag functionality in User Story 2
-    toast.info("Add to bag feature coming soon in User Story 2!");
-    console.log("Add to bag:", productOfferId);
+    setSelectedProductOfferId(productOfferId);
+    setDialogOpen(true);
   };
 
   const child = childData?.child;
@@ -43,6 +45,12 @@ function FinderContent() {
           initialAgeBand={initialAgeBand}
           initialInterests={initialInterests}
           onAddToBag={handleAddToBag}
+        />
+
+        <ChildSelectorDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          productOfferId={selectedProductOfferId}
         />
       </div>
     </div>
