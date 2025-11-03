@@ -2,7 +2,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { regenerateShareToken } from "@/lib/db/bags";
-import { db } from "@/lib/db/client";
+import { prisma as db } from "@/lib/db/client";
 
 /**
  * POST /api/bags/[bagId]/share - Generate/regenerate share link

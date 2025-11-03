@@ -1,5 +1,5 @@
 // src/lib/db/popularity-signals.ts
-import { db } from "./client";
+import { prisma as db } from "./client";
 import { SignalType } from "@prisma/client";
 
 /**

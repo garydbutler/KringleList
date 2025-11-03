@@ -1,5 +1,5 @@
 // src/lib/db/claims.ts
-import { db } from "./client";
+import { prisma } from "./client";
 import { ClaimStatus } from "@prisma/client";
 
 export interface CreateClaimInput {
@@ -12,7 +12,7 @@ export interface CreateClaimInput {
  * Create a claim for a bag item
  */
 export async function createClaim(input: CreateClaimInput) {
-  return db.claim.create({
+  return prisma.claim.create({
     data: {
       bagItemId: input.bagItemId,
       claimerName: input.claimerName,
@@ -26,7 +26,7 @@ export async function createClaim(input: CreateClaimInput) {
  * Get claim by bag item ID
  */
 export async function getClaimByBagItemId(bagItemId: string) {
-  return db.claim.findUnique({
+  return prisma.claim.findUnique({
     where: { bagItemId },
   });
 }
@@ -36,7 +36,7 @@ export async function getClaimByBagItemId(bagItemId: string) {
  * Only allowed within 24 hours of claiming
  */
 export async function deleteClaim(bagItemId: string) {
-  const claim = await db.claim.findUnique({
+  const claim = await prisma.claim.findUnique({
     where: { bagItemId },
   });
 
@@ -51,7 +51,7 @@ export async function deleteClaim(bagItemId: string) {
     throw new Error("Cannot unclaim after 24 hours");
   }
 
-  return db.claim.delete({
+  return prisma.claim.delete({
     where: { bagItemId },
   });
 }
@@ -60,7 +60,7 @@ export async function deleteClaim(bagItemId: string) {
  * Mark a claim as purchased
  */
 export async function markClaimAsPurchased(bagItemId: string) {
-  return db.claim.update({
+  return prisma.claim.update({
     where: { bagItemId },
     data: {
       status: ClaimStatus.PURCHASED,
@@ -73,7 +73,7 @@ export async function markClaimAsPurchased(bagItemId: string) {
  * Get all claims for a bag
  */
 export async function getClaimsByBagId(bagId: string) {
-  return db.claim.findMany({
+  return prisma.claim.findMany({
     where: {
       bagItem: {
         bagId,

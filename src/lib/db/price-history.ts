@@ -1,5 +1,5 @@
 // src/lib/db/price-history.ts
-import { db } from "./client";
+import { prisma as db } from "./client";
 
 /**
  * Create a price snapshot for tracking price history

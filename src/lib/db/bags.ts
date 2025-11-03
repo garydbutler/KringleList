@@ -1,5 +1,5 @@
 // src/lib/db/bags.ts
-import { db } from "./client";
+import { prisma as db } from "./client";
 import { nanoid } from "nanoid";
 
 export interface BagWithItems {

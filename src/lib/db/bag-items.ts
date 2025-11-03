@@ -1,5 +1,5 @@
 // src/lib/db/bag-items.ts
-import { db } from "./client";
+import { prisma as db } from "./client";
 
 export interface AddBagItemInput {
   bagId: string;

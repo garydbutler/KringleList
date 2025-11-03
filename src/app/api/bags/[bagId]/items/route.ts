@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { addBagItem } from "@/lib/db/bag-items";
 import { createBag, getBagByChildId } from "@/lib/db/bags";
-import { db } from "@/lib/db/client";
+import { prisma as db } from "@/lib/db/client";
 import { z } from "zod";
 
 const addItemSchema = z.object({

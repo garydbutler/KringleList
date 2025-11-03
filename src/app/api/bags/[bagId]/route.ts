@@ -2,7 +2,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getBagByChildId } from "@/lib/db/bags";
-import { db } from "@/lib/db/client";
+import { prisma as db } from "@/lib/db/client";
 
 /**
  * GET /api/bags/[bagId] - Get bag with all items for authenticated parent
